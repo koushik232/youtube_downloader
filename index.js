@@ -1,30 +1,20 @@
 const express = require('express');
 const ytdl = require('ytdl-core');
 const cors = require('cors');
-
 const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(cors());
+app.use(express.json());
 
-app.get('/download', (req, res) => {
-  const videoUrl = req.query.url;
-  if (!videoUrl) {
-    return res.status(400).send('Video URL is required');
+app.post('/download', async (req, res) => {
+  const { url } = req.body;
+  if (!url || !ytdl.validateURL(url)) {
+    return res.status(400).send('Invalid YouTube URL');
   }
 
-  if (ytdl.validateURL(videoUrl)) {
-    ytdl.getInfo(videoUrl).then(info => {
-      const title = info.videoDetails.title.replace(/[^\w\s]/gi, '');
-      res.header('Content-Disposition', `attachment; filename="${title}.mp3"`);
-
-      ytdl(videoUrl, { filter: 'audioonly', quality: 'highestaudio' }).pipe(res);
-    }).catch(err => {
-      res.status(500).send('Failed to retrieve video info');
-    });
-  } else {
-    res.status(400).send('Invalid YouTube URL');
-  }
+  res.setHeader('Content-Disposition', 'attachment; filename="audio.mp3"');
+  ytdl(url, { filter: 'audioonly' }).pipe(res);
 });
 
 app.listen(port, () => {
