@@ -1,25 +1,30 @@
 const express = require('express');
+const cors = require('cors');
 const ytdl = require('ytdl-core');
 const app = express();
-const PORT = process.env.PORT || 3000;
 
-app.get('/', (req, res) => {
-  res.send('YouTube Audio Downloader is running');
-});
+app.use(cors());
 
 app.get('/download', async (req, res) => {
-  const videoURL = req.query.url;
-  if (!videoURL || !ytdl.validateURL(videoURL)) {
-    return res.status(400).send('Invalid or missing YouTube URL');
+  const videoUrl = req.query.url;
+  if (!videoUrl || !ytdl.validateURL(videoUrl)) {
+    return res.status(400).send('Invalid YouTube URL');
   }
 
-  res.header('Content-Disposition', 'attachment; filename="audio.mp3"');
-  ytdl(videoURL, {
-    filter: 'audioonly',
-    quality: 'highestaudio'
-  }).pipe(res);
+  try {
+    const info = await ytdl.getInfo(videoUrl);
+    const title = info.videoDetails.title.replace(/[^\w\s]/gi, '');
+
+    res.setHeader('Content-Disposition', `attachment; filename="${title}.mp3"`);
+
+    ytdl(videoUrl, {
+      filter: 'audioonly',
+      quality: 'highestaudio',
+    }).pipe(res);
+  } catch (err) {
+    res.status(500).send('Failed to download audio');
+  }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
