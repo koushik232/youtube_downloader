@@ -1,30 +1,30 @@
 const express = require('express');
-const cors = require('cors');
 const ytdl = require('ytdl-core');
-const app = express();
+const cors = require('cors');  // CORS প্যাকেজটি ইমপোর্ট
 
+const app = express();
+const port = process.env.PORT || 3000;
+
+// CORS enable করতে middleware হিসেবে ব্যবহার
 app.use(cors());
 
-app.get('/download', async (req, res) => {
+// Download endpoint
+app.get('/download', (req, res) => {
   const videoUrl = req.query.url;
-  if (!videoUrl || !ytdl.validateURL(videoUrl)) {
-    return res.status(400).send('Invalid YouTube URL');
+  if (!videoUrl) {
+    return res.status(400).send('Video URL is required');
   }
 
-  try {
-    const info = await ytdl.getInfo(videoUrl);
-    const title = info.videoDetails.title.replace(/[^\w\s]/gi, '');
-
-    res.setHeader('Content-Disposition', `attachment; filename="${title}.mp3"`);
-
-    ytdl(videoUrl, {
-      filter: 'audioonly',
-      quality: 'highestaudio',
-    }).pipe(res);
-  } catch (err) {
-    res.status(500).send('Failed to download audio');
+  // YouTube ভিডিও ডাউনলোড
+  if (ytdl.validateURL(videoUrl)) {
+    res.header('Content-Disposition', 'attachment; filename="audio.mp3"');
+    ytdl(videoUrl, { filter: 'audioonly' }).pipe(res);  // Audio-only stream
+  } else {
+    res.status(400).send('Invalid YouTube URL');
   }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
+// Server start
+app.listen(port, () => {
+  console.log(`Server is running on http://localhost:${port}`);
+});
