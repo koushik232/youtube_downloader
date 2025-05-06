@@ -1,15 +1,13 @@
 const express = require('express');
 const cors = require('cors');
-const ytdl = require('ytdl-core');
+const { spawn } = require('child_process');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
-// Serve HTML from root
+// Serve the frontend
 app.get('/', (req, res) => {
   res.send(`
     <!DOCTYPE html>
@@ -76,21 +74,28 @@ app.get('/', (req, res) => {
   `);
 });
 
-// Download route
+// Download endpoint using spawn
 app.get('/download', (req, res) => {
   const videoUrl = req.query.url;
-  if (!videoUrl) {
-    return res.status(400).send('Video URL is required');
-  }
+  if (!videoUrl) return res.status(400).send('Video URL is required');
 
-  if (ytdl.validateURL(videoUrl)) {
-    res.header('Content-Disposition', 'attachment; filename="audio.mp3"');
-    ytdl(videoUrl, { filter: 'audioonly' }).pipe(res);
-  } else {
-    res.status(400).send('Invalid YouTube URL');
-  }
+  res.setHeader('Content-Disposition', 'attachment; filename="audio.mp3"');
+
+  const process = spawn('yt-dlp', ['-f', 'bestaudio', '-o', '-', videoUrl]);
+
+  process.stdout.pipe(res);
+
+  process.stderr.on('data', (data) => {
+    console.error(data.toString());
+  });
+
+  process.on('error', (err) => {
+    console.error('Download error:', err);
+    res.status(500).send('Error downloading audio');
+  });
 });
 
+// Start server
 app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
+  console.log(\`Server running at http://localhost:\${port}\`);
 });
